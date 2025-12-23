@@ -1,5 +1,8 @@
 # vSphere with Tanzu Quick Start Demo
 
+> ARCHIVED: This repository has been archived in-place and replaced by a new Oracle RAC project under `oracle-rac-cluster/`.
+> See `ARCHIVED.md` for details.
+
 ## Purpose
 
 This repository provides a minimal, hands-on quick-start for deploying workloads into a vSphere with Tanzu environment. It demonstrates how to:
