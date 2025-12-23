@@ -1,0 +1,103 @@
+---
+- name: Install Oracle RAC on RHEL 8.10
+  hosts: all
+  become: yes
+  vars:
+    oracle_base: /u01/app/oracle
+    grid_base: /u01/app/grid
+    oracle_home: "{{ oracle_base }}/product/19.3.0/dbhome_1"
+    grid_home: "{{ grid_base }}/product/19.3.0/grid"
+    db_name: racdb
+    cluster_name: rac-cluster
+    scan_name: rac-scan.local
+    asm_disks:
+      - /dev/sdb
+      - /dev/sdc
+      - /dev/sdd
+    nodes:
+      - name: node1
+        public_ip: 192.168.1.101
+        private_ip: 10.0.0.101
+        vip: 192.168.1.103
+      - name: node2
+        public_ip: 192.168.1.102
+        private_ip: 10.0.0.102
+        vip: 192.168.1.104
+
+  tasks:
+    - name: Update hosts file
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.public_ip }} {{ item.name }} {{ item.name }}.local"
+      loop: "{{ nodes }}"
+
+    - name: Install required packages
+      yum:
+        name:
+          - oracle-database-preinstall-19c
+          - kmod-oracleasm
+          - oracleasm-support
+        state: present
+
+    - name: Configure ASM disks
+      command: |
+        oracleasm configure -i -e -u oracle -g oinstall -s y -d DATA -p /dev/sdb
+        oracleasm configure -i -e -u oracle -g oinstall -s y -d FRA -p /dev/sdc
+        oracleasm configure -i -e -u oracle -g oinstall -s y -d OCR -p /dev/sdd
+      become_user: root
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: oracle
+        group: oinstall
+        mode: '0755'
+      loop:
+        - "{{ oracle_base }}"
+        - "{{ grid_base }}"
+
+    - name: Unzip Grid software
+      unarchive:
+        src: /tmp/LINUX.X64_193000_grid_home.zip
+        dest: "{{ grid_base }}"
+        owner: oracle
+        group: oinstall
+      become_user: oracle
+
+    - name: Run Grid installer (silent)
+      command: "{{ grid_home }}/gridSetup.sh -silent -responseFile /tmp/grid_response.rsp"
+      become_user: oracle
+      environment:
+        ORACLE_HOME: "{{ grid_home }}"
+        ORACLE_BASE: "{{ grid_base }}"
+
+    - name: Unzip DB software
+      unarchive:
+        src: /tmp/LINUX.X64_193000_db_home.zip
+        dest: "{{ oracle_base }}"
+        owner: oracle
+        group: oinstall
+      become_user: oracle
+
+    - name: Run DB installer (silent)
+      command: "{{ oracle_home }}/runInstaller -silent -responseFile /tmp/db_response.rsp"
+      become_user: oracle
+      environment:
+        ORACLE_HOME: "{{ oracle_home }}"
+        ORACLE_BASE: "{{ oracle_base }}"
+
+    - name: Create RAC database
+      command: "{{ oracle_home }}/bin/dbca -silent -createDatabase -templateName General_Purpose.dbc -gdbname {{ db_name }} -sid {{ db_name }} -responseFile /tmp/dbca_response.rsp"
+      become_user: oracle
+      environment:
+        ORACLE_HOME: "{{ oracle_home }}"
+        ORACLE_SID: "{{ db_name }}1"
+
+    - name: Verify RAC status
+      command: "{{ grid_home }}/bin/crsctl check cluster"
+      register: crs_status
+
+    - name: Debug CRS status
+      debug:
+        msg: "{{ crs_status.stdout }}"
