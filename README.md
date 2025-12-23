@@ -1,5 +1,60 @@
 # vSphere with Tanzu Quick Start Demo
 
+## Purpose
+
+This repository provides a minimal, hands-on quick-start for deploying workloads into a vSphere with Tanzu environment. It demonstrates how to:
+
+- Log into the Supervisor cluster
+- Create a Tanzu Kubernetes (TKG) workload cluster
+- Provision storage (PersistentVolume/PVC)
+- Deploy a sample Pod and expose it with a Service
+
+## Prerequisites
+
+- A working vSphere environment with vSphere with Tanzu (Supervisor cluster) configured
+- `kubectl` installed and the vSphere `kubectl` plugin (Namespace CLI tools)
+- Network access to vCenter / Supervisor cluster and appropriate RBAC permissions in your Namespace
+- Recommended: a Linux/macOS shell (Windows users may need to adapt shell commands)
+
+## Quickstart (summary)
+
+1. Export environment variables and log in to the Supervisor cluster
+
+```sh
+export SC_IP=10.198.52.128
+export NAMESPACE=myles
+kubectl vsphere login --server=https://$SC_IP --vsphere-username administrator@vsphere.local --insecure-skip-tls-verify
+```
+
+2. Switch context to your Namespace (Supervisor cluster context)
+
+```sh
+kubectl config use-context $NAMESPACE
+```
+
+3. Create a Tanzu workload cluster (TKC)
+
+```sh
+kubectl apply -f manifests/tkc.yaml
+```
+
+4. When the TKC is ready, log in to the TKG cluster and switch context
+
+```sh
+kubectl vsphere login --server=$SC_IP --tanzu-kubernetes-cluster-name tkc-1 --tanzu-kubernetes-cluster-namespace $NAMESPACE --vsphere-username administrator@vsphere.local --insecure-skip-tls-verify
+kubectl config use-context tkc-1
+```
+
+5. Deploy example storage and workload manifests from the `manifests/` folder
+
+```sh
+kubectl apply -f manifests/pvc.yaml
+kubectl apply -f manifests/pod.yaml
+kubectl apply -f manifests/svc.yaml
+```
+
+See the following sections for full details, troubleshooting tips and examples.
+
 ## Log in to Supervisor cluster
 
 Kubernetes and containers are developer technologies, as such almost all of the tooling assumes either Linux or macos as an operating system, that includes things like exporting environment variables and other shell commands - this guide is written to follow those guidelines and it is recommended you use a Linux VM or otherwise to ease troubleshooting. If you are running Windows you will need to adjust the commands to their Windows equivalents.

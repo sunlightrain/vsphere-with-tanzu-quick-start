@@ -2,6 +2,14 @@ apiVersion: run.tanzu.vmware.com/v1alpha1
 kind: TanzuKubernetesCluster
 metadata:
   name: tkc-1
+```yaml
+apiVersion: run.tanzu.vmware.com/v1alpha1
+kind: TanzuKubernetesCluster
+metadata:
+  name: tkc-1
+  namespace: tanzu-quickstart
+  labels:
+    role: demo
 spec:
   distribution:
     version: v1.18
